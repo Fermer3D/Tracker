@@ -1,10 +1,3 @@
-//
-//  ViewController.swift
-//  Tracker
-//
-//  Created by Данил Третьяченко on 12.05.2026.
-//
-
 import UIKit
 
 class ViewController: UIViewController {
@@ -16,4 +9,3 @@ class ViewController: UIViewController {
 
 
 }
-

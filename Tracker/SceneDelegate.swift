@@ -1,10 +1,3 @@
-//
-//  SceneDelegate.swift
-//  Tracker
-//
-//  Created by Данил Третьяченко on 12.05.2026.
-//
-
 import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
@@ -13,10 +6,24 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
-        // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
-        // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
-        guard let _ = (scene as? UIWindowScene) else { return }
+        // 1. Проверяем, что сцена — это действительно UIWindowScene
+        guard let windowScene = (scene as? UIWindowScene) else { return }
+        
+        // 2. Создаем новое окно и привязываем его к сцене
+        let window = UIWindow(windowScene: windowScene)
+        
+        // 3. Создаем наш главный экран (пока это будет TabBarController)
+        // Мы создадим этот класс следующим шагом
+        let rootViewController = TabBarController()
+        
+        // 4. Устанавливаем этот экран как корневой для нашего окна
+        window.rootViewController = rootViewController
+        
+        // 5. Сохраняем ссылку на окно в свойстве класса SceneDelegate
+        self.window = window
+        
+        // 6. Делаем окно ключевым и видимым
+        window.makeKeyAndVisible()
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
@@ -49,4 +56,3 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
 
 }
-
