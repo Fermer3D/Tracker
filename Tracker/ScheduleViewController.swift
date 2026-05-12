@@ -1,13 +1,13 @@
-//
-//  ScheduleViewController.swift
-//  Tracker
-//
-//  Created by Данил Третьяченко on 12.05.2026.
-//
-
 import UIKit
 
 final class ScheduleViewController: UIViewController {
+    
+    // MARK: - Properties
+    weak var delegate: ScheduleViewControllerDelegate?
+    var selectedDays: [WeekDay] = []
+    
+    // Порядок дней строго с Пн
+    private let orderedDays: [WeekDay] = [.monday, .tuesday, .wednesday, .thursday, .friday, .saturday, .sunday]
     
     // MARK: - UI Elements
     private let tableView: UITableView = {
@@ -35,7 +35,6 @@ final class ScheduleViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .white
         navigationItem.title = "Расписание"
-        
         setupUI()
         setupConstraints()
     }
@@ -51,8 +50,22 @@ final class ScheduleViewController: UIViewController {
     }
     
     @objc private func didTapDoneButton() {
-        // Здесь мы будем передавать выбранные дни обратно
+        let sortedResult = selectedDays.sorted { (day1, day2) -> Bool in
+            guard let index1 = orderedDays.firstIndex(of: day1),
+                  let index2 = orderedDays.firstIndex(of: day2) else { return false }
+            return index1 < index2
+        }
+        delegate?.didUpdateSchedule(sortedResult)
         navigationController?.popViewController(animated: true)
+    }
+    
+    @objc private func switchChanged(_ sender: UISwitch) {
+        let day = orderedDays[sender.tag]
+        if sender.isOn {
+            if !selectedDays.contains(day) { selectedDays.append(day) }
+        } else {
+            selectedDays.removeAll { $0 == day }
+        }
     }
     
     private func setupConstraints() {
@@ -60,7 +73,7 @@ final class ScheduleViewController: UIViewController {
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            tableView.heightAnchor.constraint(equalToConstant: 525), // 75 * 7 дней
+            tableView.heightAnchor.constraint(equalToConstant: 525),
             
             doneButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
             doneButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
@@ -70,39 +83,38 @@ final class ScheduleViewController: UIViewController {
     }
 }
 
-// MARK: - UITableViewDataSource
 extension ScheduleViewController: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return WeekDay.allCases.count
+        return orderedDays.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = UITableViewCell(style: .default, reuseIdentifier: "dayCell")
-        let day = WeekDay.allCases[indexPath.row]
+        let day = orderedDays[indexPath.row]
         
         cell.textLabel?.text = day.russianName
         cell.backgroundColor = UIColor(red: 0.902, green: 0.91, blue: 0.922, alpha: 0.3)
+        cell.selectionStyle = .none
         
-        // Добавляем переключатель (UISwitch)
         let switchView = UISwitch(frame: .zero)
         switchView.onTintColor = .systemBlue
-        switchView.tag = indexPath.row // Чтобы понимать, какой день переключили
+        switchView.tag = indexPath.row
+        switchView.isOn = selectedDays.contains(day)
+        switchView.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
         cell.accessoryView = switchView
         
-        // Скругление углов для всей таблицы
+        cell.layer.cornerRadius = 16
         if indexPath.row == 0 {
-            cell.layer.cornerRadius = 16
             cell.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-        } else if indexPath.row == WeekDay.allCases.count - 1 {
-            cell.layer.cornerRadius = 16
+        } else if indexPath.row == orderedDays.count - 1 {
             cell.layer.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
             cell.separatorInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: .greatestFiniteMagnitude)
+        } else {
+            cell.layer.cornerRadius = 0
         }
         
         return cell
     }
     
-    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        return 75
-    }
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat { 75 }
 }
