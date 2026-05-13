@@ -1,10 +1,3 @@
-//
-//  AppDelegate.swift
-//  Tracker
-//
-//  Created by Данил Третьяченко on 12.05.2026.
-//
-
 import UIKit
 
 @main
@@ -33,4 +26,3 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 
 }
-
