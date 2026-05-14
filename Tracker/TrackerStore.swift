@@ -35,7 +35,7 @@ final class TrackerStore: NSObject {
         self.context = context
         super.init()
         
-        // Первичная загрузка данных
+        // Первичная загрузка данных (безопасно игнорируем ошибку, так как при пустой базе это норма)
         try? fetchedResultsController.performFetch()
     }
     
@@ -46,15 +46,30 @@ final class TrackerStore: NSObject {
     }
     
     func numberOfItemsInSection(_ section: Int) -> Int {
-        fetchedResultsController.sections?[section].numberOfObjects ?? 0
+        // Безопасно получаем количество объектов в секции
+        guard let sections = fetchedResultsController.sections, sections.count > section else {
+            return 0
+        }
+        return sections[section].numberOfObjects
     }
     
     func headerLabelFor(section: Int) -> String? {
-        fetchedResultsController.sections?[section].name
+        guard let sections = fetchedResultsController.sections, sections.count > section else {
+            return nil
+        }
+        return sections[section].name
     }
     
+    /// Безопасное получение объекта Core Data по индексу
     func trackerCoreData(at indexPath: IndexPath) -> TrackerCoreData {
-        fetchedResultsController.object(at: indexPath)
+        // Если индекс валиден — возвращаем объект, если нет — создаем временный пустой объект в контексте
+        // чтобы избежать force unwrap и падения всего приложения
+        if let sections = fetchedResultsController.sections,
+           sections.count > indexPath.section,
+           sections[indexPath.section].numberOfObjects > indexPath.item {
+            return fetchedResultsController.object(at: indexPath)
+        }
+        return TrackerCoreData(context: context)
     }
     
     /// Метод для обновления фильтров (день недели и поиск)
@@ -87,6 +102,7 @@ final class TrackerStore: NSObject {
         trackerCoreData.emoji = tracker.emoji
         trackerCoreData.colorHex = UIColorMarshalling.hexString(from: tracker.color)
         
+        // Используем KVC для записи, чтобы избежать конфликтов типов с автогенерацией Xcode
         let scheduleString = tracker.schedule?.map { String($0.rawValue) }.joined(separator: ",") ?? ""
         trackerCoreData.setValue(scheduleString, forKey: "schedule")
         
@@ -101,7 +117,7 @@ final class TrackerStore: NSObject {
 // MARK: - NSFetchedResultsControllerDelegate
 extension TrackerStore: NSFetchedResultsControllerDelegate {
     func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-        // Уведомляем контроллер, что данные изменились, не передавая объекты Core Data
+        // Уведомляем контроллер об изменениях через делегат
         delegate?.storeDidChangeContent()
     }
 }

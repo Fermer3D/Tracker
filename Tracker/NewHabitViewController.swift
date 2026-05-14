@@ -118,7 +118,7 @@ final class NewHabitViewController: UIViewController {
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        // Обновляем высоту коллекции в зависимости от контента
+        // Безопасно обновляем констрейнт через опциональную цепочку
         collectionViewHeightConstraint?.constant = collectionView.contentSize.height
     }
     
@@ -162,7 +162,9 @@ final class NewHabitViewController: UIViewController {
     @objc private func didTapCreate() {
         guard let name = nameTextField.text, !name.isEmpty,
               let emojiIndex = selectedEmojiIndex,
-              let colorIndex = selectedColorIndex else { return }
+              let colorIndex = selectedColorIndex,
+              emojis.indices.contains(emojiIndex),
+              colors.indices.contains(colorIndex) else { return }
         
         let schedule = isIrregularEvent ? nil : selectedSchedule
         
@@ -198,11 +200,13 @@ final class NewHabitViewController: UIViewController {
     }
     
     private func setupConstraints() {
-        guard let bottomStack = contentView.subviews.last as? UIStackView else { return }
+        // Безопасно ищем стэк через фильтрацию, чтобы избежать as!
+        let bottomStack = contentView.subviews.compactMap { $0 as? UIStackView }.first
         
-        collectionViewHeightConstraint = collectionView.heightAnchor.constraint(equalToConstant: 0)
+        let heightConstraint = collectionView.heightAnchor.constraint(equalToConstant: 0)
+        collectionViewHeightConstraint = heightConstraint
         
-        NSLayoutConstraint.activate([
+        var constraints = [
             scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -230,14 +234,21 @@ final class NewHabitViewController: UIViewController {
             collectionView.topAnchor.constraint(equalTo: tableView.bottomAnchor, constant: 16),
             collectionView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            collectionViewHeightConstraint!,
-            
-            bottomStack.topAnchor.constraint(equalTo: collectionView.bottomAnchor, constant: 16),
-            bottomStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            bottomStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            bottomStack.heightAnchor.constraint(equalToConstant: 60),
-            bottomStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -24)
-        ])
+            heightConstraint
+        ]
+        
+        // Безопасно добавляем констрейнты для нижнего стека
+        if let stack = bottomStack {
+            constraints.append(contentsOf: [
+                stack.topAnchor.constraint(equalTo: collectionView.bottomAnchor, constant: 16),
+                stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
+                stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+                stack.heightAnchor.constraint(equalToConstant: 60),
+                stack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -24)
+            ])
+        }
+        
+        NSLayoutConstraint.activate(constraints)
     }
 }
 
@@ -292,13 +303,17 @@ extension NewHabitViewController: UICollectionViewDataSource, UICollectionViewDe
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         if indexPath.section == 0 {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: EmojiCollectionViewCell.identifier, for: indexPath) as! EmojiCollectionViewCell
+            guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: EmojiCollectionViewCell.identifier, for: indexPath) as? EmojiCollectionViewCell else {
+                return UICollectionViewCell()
+            }
             cell.emojiLabel.text = emojis[indexPath.row]
             cell.contentView.layer.cornerRadius = 16
             cell.contentView.backgroundColor = (indexPath.row == selectedEmojiIndex) ? UIColor(red: 0.902, green: 0.91, blue: 0.922, alpha: 1.0) : .clear
             return cell
         } else {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ColorCollectionViewCell.identifier, for: indexPath) as! ColorCollectionViewCell
+            guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ColorCollectionViewCell.identifier, for: indexPath) as? ColorCollectionViewCell else {
+                return UICollectionViewCell()
+            }
             let color = colors[indexPath.row]
             cell.setViewColor(color)
             cell.setSelected(indexPath.row == selectedColorIndex, with: color)
@@ -328,7 +343,9 @@ extension NewHabitViewController: UICollectionViewDataSource, UICollectionViewDe
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumInteritemSpacingForSectionAt section: Int) -> CGFloat { 5 }
     
     func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
-        let header = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: SupplementaryView.identifier, for: indexPath) as! SupplementaryView
+        guard let header = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: SupplementaryView.identifier, for: indexPath) as? SupplementaryView else {
+            return UICollectionReusableView()
+        }
         header.titleLabel.text = indexPath.section == 0 ? "Emoji" : "Цвет"
         return header
     }
@@ -368,5 +385,7 @@ final class SupplementaryView: UICollectionReusableView {
         ])
     }
     
-    required init?(coder: NSCoder) { fatalError() }
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+    }
 }

@@ -62,7 +62,6 @@ final class TrackersViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .white
         
-        // Подписываемся на делегат стора вместо делегата FRC
         trackerStore.delegate = self
         
         setupNavigationBar()
@@ -89,7 +88,6 @@ final class TrackersViewController: UIViewController {
         let weekday = Calendar.current.component(.weekday, from: currentDate)
         let searchText = navigationItem.searchController?.searchBar.text ?? ""
         
-        // Логика фильтрации теперь инкапсулирована внутри TrackerStore
         trackerStore.updateFilters(weekday: weekday, searchText: searchText)
         
         collectionView.reloadData()
@@ -144,7 +142,6 @@ final class TrackersViewController: UIViewController {
     
     private func reloadPlaceholder() {
         let isSearchActive = !(navigationItem.searchController?.searchBar.text?.isEmpty ?? true)
-        // Проверяем состояние данных через стор
         let isDataEmpty = trackerStore.numberOfSections == 0
         
         collectionView.isHidden = isDataEmpty
@@ -187,10 +184,16 @@ extension TrackersViewController: TrackerStoreDelegate {
 // MARK: - NewHabitViewControllerDelegate
 extension TrackersViewController: NewHabitViewControllerDelegate {
     func didCreateTracker(_ tracker: Tracker) {
-        let targetCategory = trackerCategoryStore.categories.first ?? {
+        // Безопасное получение или создание категории
+        let category: TrackerCategoryCoreData?
+        if let firstCategory = trackerCategoryStore.categories.first {
+            category = firstCategory
+        } else {
             try? trackerCategoryStore.createCategory(title: "Важное")
-            return trackerCategoryStore.categories.first
-        }()!
+            category = trackerCategoryStore.categories.first
+        }
+        
+        guard let targetCategory = category else { return }
         
         do {
             try trackerStore.addNewTracker(tracker, to: targetCategory)
@@ -212,21 +215,26 @@ extension TrackersViewController: UICollectionViewDataSource, UICollectionViewDe
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: TrackerCollectionViewCell.identifier, for: indexPath) as? TrackerCollectionViewCell else { return UICollectionViewCell() }
+        guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: TrackerCollectionViewCell.identifier, for: indexPath) as? TrackerCollectionViewCell else {
+            return UICollectionViewCell()
+        }
         
-        // Получаем объект через стор без прямого использования CoreData типов
-        let trackerCoreData = trackerStore.trackerCoreData(at: indexPath)
-        guard let id = trackerCoreData.id else { return UICollectionViewCell() }
+        let trackerCD = trackerStore.trackerCoreData(at: indexPath)
+        
+        // Безопасное извлечение данных с дефолтными значениями
+        let id = trackerCD.id ?? UUID()
+        let name = trackerCD.name ?? ""
+        let emoji = trackerCD.emoji ?? ""
+        let colorHex = trackerCD.colorHex ?? "#3772E7"
+        let trackerColor = UIColorMarshalling.color(from: colorHex)
         
         let allRecords = (try? trackerRecordStore.fetchRecords()) ?? []
         let isCompletedToday = allRecords.contains { $0.trackerId == id && Calendar.current.isDate($0.date, inSameDayAs: currentDate) }
         let completedCount = allRecords.filter { $0.trackerId == id }.count
         
+        let tracker = Tracker(id: id, name: name, color: trackerColor, emoji: emoji, schedule: nil)
+        
         cell.delegate = self
-        let trackerColor = UIColorMarshalling.color(from: trackerCoreData.colorHex ?? "#3772E7")
-        
-        let tracker = Tracker(id: id, name: trackerCoreData.name ?? "", color: trackerColor, emoji: trackerCoreData.emoji ?? "❓", schedule: nil)
-        
         cell.configure(with: tracker, isCompleted: isCompletedToday, completedDaysString: formatDaysString(for: completedCount), indexPath: indexPath)
         return cell
     }
@@ -239,7 +247,9 @@ extension TrackersViewController: UICollectionViewDataSource, UICollectionViewDe
         UIEdgeInsets(top: 12, left: 16, bottom: 16, right: 16)
     }
     
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumInteritemSpacingForSectionAt section: Int) -> CGFloat { 9 }
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumInteritemSpacingForSectionAt section: Int) -> CGFloat {
+        return 9
+    }
 }
 
 // MARK: - TrackerCellDelegate

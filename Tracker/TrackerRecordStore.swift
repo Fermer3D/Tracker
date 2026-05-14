@@ -1,10 +1,3 @@
-//
-//  TrackerRecordStore.swift
-//  Tracker
-//
-//  Created by Данил Третьяченко on 13.05.2026.
-//
-
 import CoreData
 import UIKit
 
@@ -17,14 +10,17 @@ final class TrackerRecordStore: NSObject {
     
     // MARK: - Public Methods
     
-    // Добавление новой записи о выполнении с проверкой на дубликаты
+    /// Добавление новой записи о выполнении с проверкой на дубликаты
     func add(_ record: TrackerRecord) throws {
-        // Проверяем, нет ли уже такой записи в базе (чтобы счетчик не рос бесконечно)
         let request = TrackerRecordCoreData.fetchRequest()
         
         // Обрезаем время у даты для точного сравнения только дня
         let dateStart = Calendar.current.startOfDay(for: record.date)
-        let dateEnd = Calendar.current.date(byAdding: .day, value: 1, to: dateStart)!
+        
+        // Безопасно вычисляем конец дня без использования !
+        guard let dateEnd = Calendar.current.date(byAdding: .day, value: 1, to: dateStart) else {
+            return
+        }
         
         request.predicate = NSPredicate(
             format: "id == %@ AND date >= %@ AND date < %@",
@@ -42,16 +38,21 @@ final class TrackerRecordStore: NSObject {
         recordCoreData.id = record.trackerId
         recordCoreData.date = record.date
         
-        try context.save()
+        if context.hasChanges {
+            try context.save()
+        }
     }
     
-    // Удаление записи
+    /// Удаление записи
     func remove(_ record: TrackerRecord) throws {
         let request = TrackerRecordCoreData.fetchRequest()
         
-        // Аналогично используем диапазон дат для корректного поиска записи за день
         let dateStart = Calendar.current.startOfDay(for: record.date)
-        let dateEnd = Calendar.current.date(byAdding: .day, value: 1, to: dateStart)!
+        
+        // Безопасно вычисляем конец дня
+        guard let dateEnd = Calendar.current.date(byAdding: .day, value: 1, to: dateStart) else {
+            return
+        }
         
         request.predicate = NSPredicate(
             format: "id == %@ AND date >= %@ AND date < %@",
@@ -63,11 +64,14 @@ final class TrackerRecordStore: NSObject {
         let results = try context.fetch(request)
         if let recordToDelete = results.first {
             context.delete(recordToDelete)
-            try context.save()
+            
+            if context.hasChanges {
+                try context.save()
+            }
         }
     }
     
-    // Получение всех записей
+    /// Получение всех записей
     func fetchRecords() throws -> [TrackerRecord] {
         let request = TrackerRecordCoreData.fetchRequest()
         let recordsCoreData = try context.fetch(request)
