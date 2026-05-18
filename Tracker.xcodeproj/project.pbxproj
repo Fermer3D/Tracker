@@ -6,6 +6,15 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		9FB48AB52FB4B3F7003A8711 /* TrackerRecordCoreData+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB48AB42FB4B3F7003A8711 /* TrackerRecordCoreData+CoreDataProperties.swift */; };
+		9FB48AB62FB4B3F7003A8711 /* TrackerCategoryCoreData+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB48AAF2FB4B3F7003A8711 /* TrackerCategoryCoreData+CoreDataClass.swift */; };
+		9FB48AB72FB4B3F7003A8711 /* TrackerCategoryCoreData+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB48AB02FB4B3F7003A8711 /* TrackerCategoryCoreData+CoreDataProperties.swift */; };
+		9FB48AB82FB4B3F7003A8711 /* TrackerCoreData+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB48AB22FB4B3F7003A8711 /* TrackerCoreData+CoreDataProperties.swift */; };
+		9FB48AB92FB4B3F7003A8711 /* TrackerRecordCoreData+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB48AB32FB4B3F7003A8711 /* TrackerRecordCoreData+CoreDataClass.swift */; };
+		9FB48ABA2FB4B3F7003A8711 /* TrackerCoreData+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB48AB12FB4B3F7003A8711 /* TrackerCoreData+CoreDataClass.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		9F98978F2FB282200036284F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +36,12 @@
 		9F9897782FB2821E0036284F /* Tracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9F98978E2FB282200036284F /* TrackerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9F9897982FB282200036284F /* TrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9FB48AAF2FB4B3F7003A8711 /* TrackerCategoryCoreData+CoreDataClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrackerCategoryCoreData+CoreDataClass.swift"; sourceTree = "<group>"; };
+		9FB48AB02FB4B3F7003A8711 /* TrackerCategoryCoreData+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrackerCategoryCoreData+CoreDataProperties.swift"; sourceTree = "<group>"; };
+		9FB48AB12FB4B3F7003A8711 /* TrackerCoreData+CoreDataClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrackerCoreData+CoreDataClass.swift"; sourceTree = "<group>"; };
+		9FB48AB22FB4B3F7003A8711 /* TrackerCoreData+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrackerCoreData+CoreDataProperties.swift"; sourceTree = "<group>"; };
+		9FB48AB32FB4B3F7003A8711 /* TrackerRecordCoreData+CoreDataClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrackerRecordCoreData+CoreDataClass.swift"; sourceTree = "<group>"; };
+		9FB48AB42FB4B3F7003A8711 /* TrackerRecordCoreData+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrackerRecordCoreData+CoreDataProperties.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -88,6 +103,12 @@
 		9F98976F2FB2821E0036284F = {
 			isa = PBXGroup;
 			children = (
+				9FB48AB02FB4B3F7003A8711 /* TrackerCategoryCoreData+CoreDataProperties.swift */,
+				9FB48AAF2FB4B3F7003A8711 /* TrackerCategoryCoreData+CoreDataClass.swift */,
+				9FB48AB12FB4B3F7003A8711 /* TrackerCoreData+CoreDataClass.swift */,
+				9FB48AB22FB4B3F7003A8711 /* TrackerCoreData+CoreDataProperties.swift */,
+				9FB48AB32FB4B3F7003A8711 /* TrackerRecordCoreData+CoreDataClass.swift */,
+				9FB48AB42FB4B3F7003A8711 /* TrackerRecordCoreData+CoreDataProperties.swift */,
 				9F98977A2FB2821E0036284F /* Tracker */,
 				9F9897912FB282200036284F /* TrackerTests */,
 				9F98979B2FB282200036284F /* TrackerUITests */,
@@ -249,6 +270,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9FB48AB52FB4B3F7003A8711 /* TrackerRecordCoreData+CoreDataProperties.swift in Sources */,
+				9FB48AB62FB4B3F7003A8711 /* TrackerCategoryCoreData+CoreDataClass.swift in Sources */,
+				9FB48AB72FB4B3F7003A8711 /* TrackerCategoryCoreData+CoreDataProperties.swift in Sources */,
+				9FB48AB82FB4B3F7003A8711 /* TrackerCoreData+CoreDataProperties.swift in Sources */,
+				9FB48AB92FB4B3F7003A8711 /* TrackerRecordCoreData+CoreDataClass.swift in Sources */,
+				9FB48ABA2FB4B3F7003A8711 /* TrackerCoreData+CoreDataClass.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
