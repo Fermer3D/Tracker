@@ -1,11 +1,17 @@
+import Foundation
 import CoreData
 import UIKit
 
 final class TrackerRecordStore: NSObject {
+    
+    // MARK: - Properties
     private let context: NSManagedObjectContext
     
-    init(context: NSManagedObjectContext = DataProvider.shared.context) {
+    // MARK: - Init
+    // Убираем значение по умолчанию, чтобы контекст передавался строго контролируемо сверху
+    init(context: NSManagedObjectContext) {
         self.context = context
+        super.init()
     }
     
     // MARK: - Public Methods
@@ -22,9 +28,10 @@ final class TrackerRecordStore: NSObject {
             return
         }
         
+        // Для UUID в предикатах Core Data надежнее использовать uuidString
         request.predicate = NSPredicate(
             format: "id == %@ AND date >= %@ AND date < %@",
-            record.trackerId as CVarArg,
+            record.trackerId.uuidString,
             dateStart as NSDate,
             dateEnd as NSDate
         )
@@ -40,6 +47,7 @@ final class TrackerRecordStore: NSObject {
         
         if context.hasChanges {
             try context.save()
+            print("✅ [TrackerRecordStore]: Запись о выполнении трекера \(record.trackerId) сохранена.")
         }
     }
     
@@ -56,7 +64,7 @@ final class TrackerRecordStore: NSObject {
         
         request.predicate = NSPredicate(
             format: "id == %@ AND date >= %@ AND date < %@",
-            record.trackerId as CVarArg,
+            record.trackerId.uuidString,
             dateStart as NSDate,
             dateEnd as NSDate
         )
@@ -67,6 +75,7 @@ final class TrackerRecordStore: NSObject {
             
             if context.hasChanges {
                 try context.save()
+                print("🗑️ [TrackerRecordStore]: Запись о выполнении трекера \(record.trackerId) удалена.")
             }
         }
     }

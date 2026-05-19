@@ -1,40 +1,33 @@
 import UIKit
-
-// MARK: - UIColorMarshalling
-final class UIColorMarshalling {
-    static func hexString(from color: UIColor) -> String {
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        color.getRed(&r, green: &g, blue: &b, alpha: &a)
-        return String(format: "#%02x%02x%02x", Int(r * 255), Int(g * 255), Int(b * 255))
-    }
-
-    static func color(from hex: String) -> UIColor {
-        var rgbValue: UInt64 = 0
-        let scanner = Scanner(string: hex)
-        if hex.hasPrefix("#") { scanner.currentIndex = hex.index(after: hex.startIndex) }
-        scanner.scanHexInt64(&rgbValue)
-        return UIColor(
-            red: CGFloat((rgbValue & 0xFF0000) >> 16) / 255.0,
-            green: CGFloat((rgbValue & 0x00FF00) >> 8) / 255.0,
-            blue: CGFloat(rgbValue & 0x0000FF) / 255.0,
-            alpha: 1.0
-        )
-    }
-}
+import CoreData
 
 final class TrackersViewController: UIViewController {
     
     // MARK: - Properties
-    private let trackerStore = TrackerStore()
-    private let trackerCategoryStore = TrackerCategoryStore()
-    private let trackerRecordStore = TrackerRecordStore()
+    private lazy var trackerStore: TrackerStore = {
+        let context = DataProvider.shared.context
+        let store = TrackerStore(context: context)
+        store.delegate = self
+        return store
+    }()
+    
+    private lazy var trackerCategoryStore: TrackerCategoryStore = {
+        let context = DataProvider.shared.context
+        return TrackerCategoryStore(context: context)
+    }()
+    
+    private lazy var trackerRecordStore: TrackerRecordStore = {
+        let context = DataProvider.shared.context
+        return TrackerRecordStore(context: context)
+    }()
+    
     private var currentDate: Date = Date()
     
     // MARK: - UI Elements
     private let collectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
-        cv.backgroundColor = .white
+        cv.backgroundColor = .clear
         cv.register(TrackerCollectionViewCell.self, forCellWithReuseIdentifier: TrackerCollectionViewCell.identifier)
         cv.register(SupplementaryView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "header")
         cv.translatesAutoresizingMaskIntoConstraints = false
@@ -61,8 +54,6 @@ final class TrackersViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
-        
-        trackerStore.delegate = self
         
         setupNavigationBar()
         setupUI()
@@ -118,7 +109,10 @@ final class TrackersViewController: UIViewController {
     }
     
     private func setupUI() {
-        [collectionView, placeholderImage, placeholderLabel].forEach { view.addSubview($0) }
+        view.addSubview(collectionView)
+        view.addSubview(placeholderImage)
+        view.addSubview(placeholderLabel)
+        
         collectionView.dataSource = self
         collectionView.delegate = self
     }
@@ -142,7 +136,12 @@ final class TrackersViewController: UIViewController {
     
     private func reloadPlaceholder() {
         let isSearchActive = !(navigationItem.searchController?.searchBar.text?.isEmpty ?? true)
-        let isDataEmpty = trackerStore.numberOfSections == 0
+        
+        var totalItems = 0
+        for section in 0..<trackerStore.numberOfSections {
+            totalItems += trackerStore.numberOfItemsInSection(section)
+        }
+        let isDataEmpty = totalItems == 0
         
         collectionView.isHidden = isDataEmpty
         placeholderImage.isHidden = !isDataEmpty
@@ -184,7 +183,6 @@ extension TrackersViewController: TrackerStoreDelegate {
 // MARK: - NewHabitViewControllerDelegate
 extension TrackersViewController: NewHabitViewControllerDelegate {
     func didCreateTracker(_ tracker: Tracker) {
-        // Безопасное получение или создание категории
         let category: TrackerCategoryCoreData?
         if let firstCategory = trackerCategoryStore.categories.first {
             category = firstCategory
@@ -201,6 +199,17 @@ extension TrackersViewController: NewHabitViewControllerDelegate {
         } catch {
             print("Error saving tracker: \(error)")
         }
+    }
+}
+
+// MARK: - ChoiceViewControllerDelegate
+extension TrackersViewController: ChoiceViewControllerDelegate {
+    func didSelectTrackerType(isHabit: Bool) {
+        let creationVC = NewHabitViewController()
+        creationVC.delegate = self
+        creationVC.isIrregularEvent = !isHabit
+        let nav = UINavigationController(rootViewController: creationVC)
+        self.present(nav, animated: true)
     }
 }
 
@@ -221,7 +230,6 @@ extension TrackersViewController: UICollectionViewDataSource, UICollectionViewDe
         
         let trackerCD = trackerStore.trackerCoreData(at: indexPath)
         
-        // Безопасное извлечение данных с дефолтными значениями
         let id = trackerCD.id ?? UUID()
         let name = trackerCD.name ?? ""
         let emoji = trackerCD.emoji ?? ""
@@ -239,12 +247,28 @@ extension TrackersViewController: UICollectionViewDataSource, UICollectionViewDe
         return cell
     }
     
+    // Безопасное извлечение названия секции напрямую из Store через метод headerLabelFor
+    func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
+        guard kind == UICollectionView.elementKindSectionHeader else { return UICollectionReusableView() }
+        
+        guard let header = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "header", for: indexPath) as? SupplementaryView else {
+            return UICollectionReusableView()
+        }
+        
+        header.titleLabel.text = trackerStore.headerLabelFor(section: indexPath.section) ?? "Категория"
+        return header
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> CGSize {
+        return CGSize(width: collectionView.frame.width, height: 40)
+    }
+    
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        CGSize(width: (collectionView.frame.width - 41) / 2, height: 148)
+        return CGSize(width: (collectionView.frame.width - 41) / 2, height: 148)
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
-        UIEdgeInsets(top: 12, left: 16, bottom: 16, right: 16)
+        return UIEdgeInsets(top: 12, left: 16, bottom: 16, right: 16)
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumInteritemSpacingForSectionAt section: Int) -> CGFloat {
