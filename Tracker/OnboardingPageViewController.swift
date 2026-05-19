@@ -5,12 +5,9 @@ final class OnboardingPageViewController: UIPageViewController {
     // MARK: - Properties
     private var pages: [UIViewController] = []
     
-    // MARK: - Visual Elements
-    // ИСПРАВЛЕНО: PageControl должен быть возвращен
     private lazy var pageControl: UIPageControl = {
         let control = UIPageControl()
         control.translatesAutoresizingMaskIntoConstraints = false
-        // ИСПРАВЛЕНО: Чёрный активный, серый неактивный (как на фото 2)
         control.currentPageIndicatorTintColor = .black
         control.pageIndicatorTintColor = .lightGray
         return control
@@ -29,7 +26,7 @@ final class OnboardingPageViewController: UIPageViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupPages()
-        setupPageControl() // ИСПРАВЛЕНО: Вызов настройки точек
+        setupPageControl()
     }
     
     // MARK: - Setup
@@ -64,9 +61,8 @@ final class OnboardingPageViewController: UIPageViewController {
         pageControl.currentPage = 0
         
         NSLayoutConstraint.activate([
-            // ИСПРАВЛЕНО: Точки внизу по центру
             pageControl.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            // ИСПРАВЛЕНО: Точки над кнопкой (высота кнопки 60 + отступ 50 = 110, так что отступ -134 хороший)
+            // Точки ложатся ровно под текстом на высоту отступа кнопки
             pageControl.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -134)
         ])
     }
@@ -84,7 +80,6 @@ extension OnboardingPageViewController: UIPageViewControllerDataSource, UIPageVi
         return pages[index + 1]
     }
     
-    // ИСПРАВЛЕНО: Обновляем PageControl при пролистывании
     func pageViewController(_ pageViewController: UIPageViewController, didFinishAnimating finished: Bool, previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
         if completed,
            let currentVC = pageViewController.viewControllers?.first,
@@ -94,15 +89,13 @@ extension OnboardingPageViewController: UIPageViewControllerDataSource, UIPageVi
     }
 }
 
-// MARK: - OnboardingViewControllerDelegate
-extension OnboardingPageViewController: OnboardingViewControllerDelegate {
+// MARK: - OnboardingViewControllerCustomDelegate
+extension OnboardingPageViewController: OnboardingViewControllerCustomDelegate {
     func onboardingButtonTapped() {
-        // Записываем флаг, что пользователь видел онбординг
         UserDefaults.standard.set(true, forKey: "HasSeenOnboarding")
         
-        // Переключаемся на TabBarController (через Shared Application)
         guard let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate else { return }
-        let tabBarController = TabBarController() // твой класс ТабБара
+        let tabBarController = TabBarController() // Твой основной контроллер таббара
         sceneDelegate.window?.rootViewController = tabBarController
     }
 }
