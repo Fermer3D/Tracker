@@ -14,7 +14,9 @@ final class NewHabitViewController: UIViewController {
     // MARK: - Properties
     weak var delegate: NewHabitViewControllerDelegate?
     var isIrregularEvent: Bool = false
+    
     private var selectedSchedule: [WeekDay] = []
+    private var selectedCategoryName: String? // Переменная для хранения выбранной категории
     
     private var selectedEmojiIndex: Int?
     private var selectedColorIndex: Int?
@@ -118,7 +120,6 @@ final class NewHabitViewController: UIViewController {
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        // Безопасно обновляем констрейнт через опциональную цепочку
         collectionViewHeightConstraint?.constant = collectionView.contentSize.height
     }
     
@@ -194,13 +195,15 @@ final class NewHabitViewController: UIViewController {
         let isEmojiSelected = selectedEmojiIndex != nil
         let isColorSelected = selectedColorIndex != nil
         
-        let isEnabled = hasText && isNotTooLong && isScheduleValid && isEmojiSelected && isColorSelected
+        // Кнопка активна только если выбрана категория
+        let isCategoryValid = selectedCategoryName != nil
+        
+        let isEnabled = hasText && isNotTooLong && isScheduleValid && isEmojiSelected && isColorSelected && isCategoryValid
         createButton.isEnabled = isEnabled
         createButton.backgroundColor = isEnabled ? .black : .gray
     }
     
     private func setupConstraints() {
-        // Безопасно ищем стэк через фильтрацию, чтобы избежать as!
         let bottomStack = contentView.subviews.compactMap { $0 as? UIStackView }.first
         
         let heightConstraint = collectionView.heightAnchor.constraint(equalToConstant: 0)
@@ -237,7 +240,6 @@ final class NewHabitViewController: UIViewController {
             heightConstraint
         ]
         
-        // Безопасно добавляем констрейнты для нижнего стека
         if let stack = bottomStack {
             constraints.append(contentsOf: [
                 stack.topAnchor.constraint(equalTo: collectionView.bottomAnchor, constant: 16),
@@ -271,6 +273,11 @@ extension NewHabitViewController: UITableViewDataSource, UITableViewDelegate {
         if indexPath.row == 0 {
             cell.textLabel?.text = "Категория"
             cell.layer.maskedCorners = isIrregularEvent ? [.layerMinXMinYCorner, .layerMaxXMinYCorner, .layerMinXMaxYCorner, .layerMaxXMaxYCorner] : [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+            
+            // Вывод выбранной категории в субтитры
+            if let selectedCategoryName = selectedCategoryName {
+                cell.detailTextLabel?.text = selectedCategoryName
+            }
         } else {
             cell.textLabel?.text = "Расписание"
             cell.layer.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
@@ -282,7 +289,19 @@ extension NewHabitViewController: UITableViewDataSource, UITableViewDelegate {
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        if indexPath.row == 1 {
+        if indexPath.row == 0 {
+            // ИСПРАВЛЕНО: Теперь берем контекст из единой точки DataProvider.shared
+            let context = DataProvider.shared.context
+            let categoryStore = TrackerCategoryStore(context: context)
+            
+            let viewModel = CategoryViewModel(categoryStore: categoryStore, selectedCategoryName: selectedCategoryName)
+            let categoryVC = CategoryViewController(viewModel: viewModel)
+            categoryVC.delegate = self
+            
+            let navController = UINavigationController(rootViewController: categoryVC)
+            present(navController, animated: true)
+            
+        } else if indexPath.row == 1 {
             let scheduleVC = ScheduleViewController()
             scheduleVC.delegate = self
             scheduleVC.selectedDays = self.selectedSchedule
@@ -355,11 +374,20 @@ extension NewHabitViewController: UICollectionViewDataSource, UICollectionViewDe
     }
 }
 
-// MARK: - Delegate Extension
+// MARK: - ScheduleViewControllerDelegate
 extension NewHabitViewController: ScheduleViewControllerDelegate {
     func didUpdateSchedule(_ selectedDays: [WeekDay]) {
         self.selectedSchedule = selectedDays
         tableView.reloadRows(at: [IndexPath(row: 1, section: 0)], with: .none)
+        updateCreateButtonState()
+    }
+}
+
+// MARK: - CategoryViewControllerDelegate
+extension NewHabitViewController: CategoryViewControllerDelegate {
+    func didSelectCategory(_ categoryName: String) {
+        self.selectedCategoryName = categoryName
+        tableView.reloadRows(at: [IndexPath(row: 0, section: 0)], with: .none)
         updateCreateButtonState()
     }
 }

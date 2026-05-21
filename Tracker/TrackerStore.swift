@@ -1,3 +1,4 @@
+import Foundation
 import CoreData
 import UIKit
 
@@ -12,41 +13,49 @@ final class TrackerStore: NSObject {
     private let context: NSManagedObjectContext
     weak var delegate: TrackerStoreDelegate?
     
-    // NSFetchedResultsController теперь живет здесь, инкапсулируя логику Core Data
+    // NSFetchedResultsController инкапсулирует логику работы с данными
     private lazy var fetchedResultsController: NSFetchedResultsController<TrackerCoreData> = {
         let fetchRequest = TrackerCoreData.fetchRequest()
+        
+        // ВАЖНО: Сортировка по дескриптору секции (category.title) ОБЯЗАТЕЛЬНО должна быть первой!
         fetchRequest.sortDescriptors = [
             NSSortDescriptor(keyPath: \TrackerCoreData.category?.title, ascending: true),
             NSSortDescriptor(keyPath: \TrackerCoreData.name, ascending: true)
         ]
         
+        print("ℹ️ [TrackerStore]: Инициализация FRC. Контекст: \(self.context)")
+        
         let controller = NSFetchedResultsController(
             fetchRequest: fetchRequest,
-            managedObjectContext: context,
-            sectionNameKeyPath: "category.title",
+            managedObjectContext: self.context,
+            sectionNameKeyPath: "category.title", // Группируем секции по названию категории автоматически
             cacheName: nil
         )
         controller.delegate = self
+        
+        do {
+            try controller.performFetch()
+            print("✅ [TrackerStore]: Первичный performFetch успешно выполнен!")
+        } catch {
+            print("❌ [TrackerStore]: Ошибка performFetch в lazy инициализаторе: \(error)")
+        }
+        
         return controller
     }()
     
     // MARK: - Init
-    init(context: NSManagedObjectContext = DataProvider.shared.context) {
+    init(context: NSManagedObjectContext) {
         self.context = context
         super.init()
-        
-        // Первичная загрузка данных (безопасно игнорируем ошибку, так как при пустой базе это норма)
-        try? fetchedResultsController.performFetch()
     }
     
     // MARK: - Public Methods (Абстракция для контроллера)
     
     var numberOfSections: Int {
-        fetchedResultsController.sections?.count ?? 0
+        return fetchedResultsController.sections?.count ?? 0
     }
     
     func numberOfItemsInSection(_ section: Int) -> Int {
-        // Безопасно получаем количество объектов в секции
         guard let sections = fetchedResultsController.sections, sections.count > section else {
             return 0
         }
@@ -62,8 +71,6 @@ final class TrackerStore: NSObject {
     
     /// Безопасное получение объекта Core Data по индексу
     func trackerCoreData(at indexPath: IndexPath) -> TrackerCoreData {
-        // Если индекс валиден — возвращаем объект, если нет — создаем временный пустой объект в контексте
-        // чтобы избежать force unwrap и падения всего приложения
         if let sections = fetchedResultsController.sections,
            sections.count > indexPath.section,
            sections[indexPath.section].numberOfObjects > indexPath.item {
@@ -77,10 +84,8 @@ final class TrackerStore: NSObject {
         var predicates: [NSPredicate] = []
         
         if searchText.isEmpty {
-            // Только по дню недели
             predicates.append(NSPredicate(format: "schedule CONTAINS[c] %@", String(weekday)))
         } else {
-            // По поиску (игнорируя день недели для удобства пользователя)
             predicates.append(NSPredicate(format: "name CONTAINS[c] %@", searchText))
         }
         
@@ -102,7 +107,6 @@ final class TrackerStore: NSObject {
         trackerCoreData.emoji = tracker.emoji
         trackerCoreData.colorHex = UIColorMarshalling.hexString(from: tracker.color)
         
-        // Используем KVC для записи, чтобы избежать конфликтов типов с автогенерацией Xcode
         let scheduleString = tracker.schedule?.map { String($0.rawValue) }.joined(separator: ",") ?? ""
         trackerCoreData.setValue(scheduleString, forKey: "schedule")
         
@@ -110,6 +114,7 @@ final class TrackerStore: NSObject {
         
         if context.hasChanges {
             try context.save()
+            print("✅ [TrackerStore]: Новый трекер '\(tracker.name)' успешно сохранен.")
         }
     }
 }
@@ -117,7 +122,6 @@ final class TrackerStore: NSObject {
 // MARK: - NSFetchedResultsControllerDelegate
 extension TrackerStore: NSFetchedResultsControllerDelegate {
     func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-        // Уведомляем контроллер об изменениях через делегат
         delegate?.storeDidChangeContent()
     }
 }
