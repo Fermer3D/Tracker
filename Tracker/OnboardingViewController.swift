@@ -30,7 +30,7 @@ final class OnboardingViewController: UIViewController {
     private lazy var actionButton: UIButton = {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.backgroundColor = .black
+        button.backgroundColor = UIColor(named: "YP Reverse")
         button.setTitleColor(.white, for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
         button.layer.cornerRadius = 16

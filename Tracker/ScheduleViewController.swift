@@ -1,18 +1,23 @@
 import UIKit
 
+// MARK: - Protocols
+protocol ScheduleViewControllerDelegate: AnyObject {
+    func didUpdateSchedule(_ schedule: [WeekDay])
+}
+
 final class ScheduleViewController: UIViewController {
     
     // MARK: - Properties
     weak var delegate: ScheduleViewControllerDelegate?
     var selectedDays: [WeekDay] = []
     
-    // Порядок дней строго с Пн
     private let orderedDays: [WeekDay] = [.monday, .tuesday, .wednesday, .thursday, .friday, .saturday, .sunday]
     
     // MARK: - UI Elements
     private let tableView: UITableView = {
         let table = UITableView(frame: .zero, style: .plain)
-        table.backgroundColor = .white
+        // ИСПРАВЛЕНИЕ: Используем .clear, чтобы фон определялся цветом ячеек
+        table.backgroundColor = .clear
         table.layer.cornerRadius = 16
         table.isScrollEnabled = false
         table.separatorInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
@@ -23,8 +28,8 @@ final class ScheduleViewController: UIViewController {
     private let doneButton: UIButton = {
         let button = UIButton(type: .system)
         button.setTitle("Готово", for: .normal)
-        button.backgroundColor = .black
-        button.setTitleColor(.white, for: .normal)
+        button.backgroundColor = .ypBlack // Используем адаптивный цвет
+        button.setTitleColor(.ypWhite, for: .normal)
         button.layer.cornerRadius = 16
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
@@ -33,7 +38,7 @@ final class ScheduleViewController: UIViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .white
+        view.backgroundColor = .ypBg
         navigationItem.title = "Расписание"
         setupUI()
         setupConstraints()
@@ -93,7 +98,10 @@ extension ScheduleViewController: UITableViewDataSource, UITableViewDelegate {
         let day = orderedDays[indexPath.row]
         
         cell.textLabel?.text = day.russianName
-        cell.backgroundColor = UIColor(red: 0.902, green: 0.91, blue: 0.922, alpha: 0.3)
+        cell.textLabel?.textColor = .label // Адаптивный цвет текста
+        
+        // ИСПРАВЛЕНИЕ: Используем адаптивный цвет ячейки (должен быть в Assets)
+        cell.backgroundColor = .ypBackground
         cell.selectionStyle = .none
         
         let switchView = UISwitch(frame: .zero)

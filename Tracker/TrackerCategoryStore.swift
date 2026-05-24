@@ -11,69 +11,56 @@ final class TrackerCategoryStore: NSObject {
     // MARK: - Properties
     weak var delegate: TrackerCategoryStoreDelegate?
     private let context: NSManagedObjectContext
-    
-    // ИСПРАВЛЕНО: Сделали контроллер безопасным опционалом вместо неявного развертывания (!)
     private var fetchedResultsController: NSFetchedResultsController<TrackerCategoryCoreData>?
     
     // MARK: - Inits
-    override init() {
-        guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
-            assertionFailure("Не удалось получить AppDelegate")
-            let container = NSPersistentContainer(name: "Tracker")
-            container.loadPersistentStores { _, _ in }
-            self.context = container.viewContext
-            super.init()
-            setupFetchedResultsController()
-            return
-        }
-        
-        self.context = appDelegate.persistentContainer.viewContext
-        super.init()
-        setupFetchedResultsController()
-    }
-    
+    // Основной инициализатор, принимающий контекст (лучший вариант для DI)
     init(context: NSManagedObjectContext) {
         self.context = context
         super.init()
         setupFetchedResultsController()
     }
     
+    // Удобный инициализатор, который берет контекст из AppDelegate
+    convenience override init() {
+        guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
+            fatalError("Не удалось получить AppDelegate для инициализации TrackerCategoryStore")
+        }
+        self.init(context: appDelegate.persistentContainer.viewContext)
+    }
+    
     // MARK: - Private Methods
     private func setupFetchedResultsController() {
         let fetchRequest = TrackerCategoryCoreData.fetchRequest()
+        // Сортировка по алфавиту
         fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \TrackerCategoryCoreData.title, ascending: true)]
         
         let controller = NSFetchedResultsController(
-            fetchRequest: fetchRequest,
-            managedObjectContext: self.context,
-            sectionNameKeyPath: nil,
-            cacheName: nil
-        )
+                fetchRequest: fetchRequest,
+                managedObjectContext: self.context,
+                sectionNameKeyPath: nil,
+                cacheName: nil
+            )
         controller.delegate = self
+        self.fetchedResultsController = controller
         
         do {
             try controller.performFetch()
-            // ИСПРАВЛЕНО: Безопасное присвоение опциональной переменной
-            self.fetchedResultsController = controller
         } catch {
-            print("❌ [TrackerCategoryStore]: Ошибка performFetch: \(error)")
+            print("❌ [TrackerCategoryStore]: Ошибка при первом выполнении fetch: \(error)")
         }
     }
     
     // MARK: - Public Methods
     var categories: [TrackerCategoryCoreData] {
-        // ИСПРАВЛЕНО: Опциональная цепочка теперь работает с реальным опционалом.
-        // Если контроллер по какой-то причине nil, метод безопасно вернет пустой массив.
         return fetchedResultsController?.fetchedObjects ?? []
-    }
-    
-    func fetchCategoryTitles() -> [String] {
-        return categories.compactMap { $0.title }
     }
     
     func createCategory(title: String) throws {
         let request = TrackerCategoryCoreData.fetchRequest()
+        // Регистронезависимый поиск
         request.predicate = NSPredicate(format: "title ==[c] %@", title)
+        
         let count = try context.count(for: request)
         
         guard count == 0 else {
@@ -84,16 +71,15 @@ final class TrackerCategoryStore: NSObject {
         let categoryCoreData = TrackerCategoryCoreData(context: context)
         categoryCoreData.title = title
         
-        if context.hasChanges {
-            try context.save()
-            print("✅ [TrackerCategoryStore]: Категория '\(title)' успешно сохранена.")
-        }
+        try context.save()
+        print("✅ [TrackerCategoryStore]: Категория '\(title)' успешно сохранена.")
     }
 }
 
 // MARK: - NSFetchedResultsControllerDelegate
 extension TrackerCategoryStore: NSFetchedResultsControllerDelegate {
     func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+        // Уведомляем делегата об изменениях в базе данных
         delegate?.storeDidUpdate(self)
     }
 }
