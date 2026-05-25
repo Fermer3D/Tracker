@@ -5,20 +5,21 @@ import UIKit
 final class TrackerRecordStore: NSObject {
     
     // MARK: - Static Properties
-    static let shared = TrackerRecordStore() // Добавляем синглтон для доступа
+    static let shared = TrackerRecordStore()
     
     // MARK: - Properties
     private let context: NSManagedObjectContext
     
     // MARK: - Init
     
-    // Удобный инициализатор для работы через .shared
     convenience override init() {
-        guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
-            fatalError("Не удалось получить AppDelegate")
+        // Безопасное получение AppDelegate
+        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+            self.init(context: appDelegate.persistentContainer.viewContext)
+        } else {
+            // Если AppDelegate не получен, создаем контекст в памяти для предотвращения краша
+            self.init(context: NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType))
         }
-        let context = appDelegate.persistentContainer.viewContext
-        self.init(context: context)
     }
     
     init(context: NSManagedObjectContext) {
@@ -30,7 +31,6 @@ final class TrackerRecordStore: NSObject {
     
     /// Добавление новой записи о выполнении
     func add(_ record: TrackerRecord) throws {
-        // Проверяем, нет ли уже такой записи, чтобы избежать дубликатов в базе
         if try isRecordExists(record) {
             print("⚠️ [TrackerRecordStore]: Запись уже существует, пропуск.")
             return
@@ -48,7 +48,6 @@ final class TrackerRecordStore: NSObject {
     func remove(_ record: TrackerRecord) throws {
         let request = TrackerRecordCoreData.fetchRequest()
         
-        // Фильтруем по ID и конкретной дате (день в день)
         request.predicate = createDatePredicate(for: record)
         
         let results = try context.fetch(request)
@@ -73,9 +72,12 @@ final class TrackerRecordStore: NSObject {
     
     func fetchCompletedTrackerIds(for date: Date) -> [UUID] {
         let request = TrackerRecordCoreData.fetchRequest()
-        // Используем такой же предикат, как для удаления/проверки
         let dateStart = Calendar.current.startOfDay(for: date)
-        let dateEnd = Calendar.current.date(byAdding: .day, value: 1, to: dateStart)!
+        
+        // Безопасное вычисление следующего дня
+        guard let dateEnd = Calendar.current.date(byAdding: .day, value: 1, to: dateStart) else {
+            return []
+        }
         
         request.predicate = NSPredicate(format: "date >= %@ AND date < %@", dateStart as NSDate, dateEnd as NSDate)
         
@@ -93,11 +95,12 @@ final class TrackerRecordStore: NSObject {
         return count > 0
     }
     
-    /// Создание предиката для сравнения даты без учета времени (start of day)
+    /// Создание предиката для сравнения даты без учета времени
     private func createDatePredicate(for record: TrackerRecord) -> NSPredicate {
         let dateStart = Calendar.current.startOfDay(for: record.date)
+        
+        // Если не удалось получить конец дня, используем строгое сравнение
         guard let dateEnd = Calendar.current.date(byAdding: .day, value: 1, to: dateStart) else {
-            // Фолбэк на точное совпадение, если календарь дал сбой
             return NSPredicate(format: "id == %@ AND date == %@", record.trackerId as CVarArg, record.date as NSDate)
         }
         

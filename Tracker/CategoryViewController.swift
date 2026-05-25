@@ -49,7 +49,7 @@ final class CategoryViewController: UIViewController {
         button.setTitle("Добавить категорию", for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
         // ИСПРАВЛЕНИЕ: Используем .label для текста на кнопке, если цвет кнопки темный
-        button.backgroundColor = .ypBlack // Или .label
+        button.backgroundColor = .appButtonText // Или .label
         button.setTitleColor(.ypWhite, for: .normal)
         button.layer.cornerRadius = 16
         return button

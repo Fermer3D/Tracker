@@ -146,7 +146,7 @@ final class NewHabitViewController: UIViewController, CategoryViewControllerDele
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         
         collectionView.dataSource = self
-        collectionView.delegate = self // ОБЯЗАТЕЛЬНО ДЛЯ ОБРАБОТКИ ВЫБОРА
+        collectionView.delegate = self
         collectionView.register(EmojiCollectionViewCell.self, forCellWithReuseIdentifier: EmojiCollectionViewCell.identifier)
         collectionView.register(ColorCollectionViewCell.self, forCellWithReuseIdentifier: ColorCollectionViewCell.identifier)
         collectionView.register(SupplementaryView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: SupplementaryView.identifier)
@@ -194,7 +194,7 @@ final class NewHabitViewController: UIViewController, CategoryViewControllerDele
     }
     
     private func setupConstraints() {
-        let hStack = contentView.subviews.compactMap { $0 as? UIStackView }.last!
+        guard let hStack = contentView.subviews.first(where: { $0 is UIStackView }) as? UIStackView else { return }
         let heightConstraint = collectionView.heightAnchor.constraint(equalToConstant: 0)
         collectionViewHeightConstraint = heightConstraint
         
@@ -203,6 +203,7 @@ final class NewHabitViewController: UIViewController, CategoryViewControllerDele
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
             contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
             contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
             contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
@@ -232,7 +233,6 @@ final class NewHabitViewController: UIViewController, CategoryViewControllerDele
         ])
     }
     
-    // MARK: - Delegates
     func didSelectCategory(_ category: TrackerCategoryCoreData) {
         self.selectedCategory = category
         tableView.reloadRows(at: [IndexPath(row: 0, section: 0)], with: .none)
@@ -286,13 +286,13 @@ extension NewHabitViewController: UICollectionViewDataSource, UICollectionViewDe
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         if indexPath.section == 0 {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: EmojiCollectionViewCell.identifier, for: indexPath) as! EmojiCollectionViewCell
+            guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: EmojiCollectionViewCell.identifier, for: indexPath) as? EmojiCollectionViewCell else { return UICollectionViewCell() }
             cell.emojiLabel.text = emojis[indexPath.row]
             cell.contentView.backgroundColor = (indexPath.row == selectedEmojiIndex) ? UIColor(red: 0.902, green: 0.91, blue: 0.922, alpha: 1.0) : .clear
             cell.contentView.layer.cornerRadius = 16
             return cell
         } else {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ColorCollectionViewCell.identifier, for: indexPath) as! ColorCollectionViewCell
+            guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ColorCollectionViewCell.identifier, for: indexPath) as? ColorCollectionViewCell else { return UICollectionViewCell() }
             cell.setViewColor(colors[indexPath.row])
             cell.setSelected(indexPath.row == selectedColorIndex, with: colors[indexPath.row])
             return cell
@@ -321,7 +321,7 @@ extension NewHabitViewController: UICollectionViewDataSource, UICollectionViewDe
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumInteritemSpacingForSectionAt section: Int) -> CGFloat { 5 }
     
     func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
-        let header = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: SupplementaryView.identifier, for: indexPath) as! SupplementaryView
+        guard let header = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: SupplementaryView.identifier, for: indexPath) as? SupplementaryView else { return UICollectionReusableView() }
         header.titleLabel.text = indexPath.section == 0 ? "Emoji" : "Цвет"
         return header
     }

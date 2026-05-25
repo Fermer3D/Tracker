@@ -13,7 +13,12 @@ final class TrackerStore: NSObject {
     private let context: NSManagedObjectContext
 
     private override init() {
-        let appDelegate = UIApplication.shared.delegate as! AppDelegate
+        guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
+            // В случае ошибки приводим к некритичному состоянию или используем пустой контекст
+            self.context = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
+            super.init()
+            return
+        }
         self.context = appDelegate.persistentContainer.viewContext
         super.init()
     }
@@ -40,18 +45,14 @@ final class TrackerStore: NSObject {
         let frc = NSFetchedResultsController(
             fetchRequest: fetchRequest,
             managedObjectContext: context,
-            sectionNameKeyPath: "category.title", // Исправлено: обычно используется свойство категории
+            sectionNameKeyPath: "category.title",
             cacheName: nil
         )
         
         frc.delegate = self
         _fetchedResultsController = frc
         
-        do {
-            try frc.performFetch()
-        } catch {
-            print("❌ Ошибка FRC при инициализации: \(error)")
-        }
+        try? frc.performFetch()
         
         return frc
     }
@@ -63,7 +64,11 @@ final class TrackerStore: NSObject {
         let trackerCDs = try context.fetch(fetchRequest)
         
         return trackerCDs.compactMap { cd in
-            guard let id = cd.id, let name = cd.name, let colorHex = cd.colorHex, let emoji = cd.emoji else { return nil }
+            guard let id = cd.id,
+                  let name = cd.name,
+                  let colorHex = cd.colorHex,
+                  let emoji = cd.emoji else { return nil }
+                  
             return Tracker(
                 id: id,
                 name: name,
@@ -117,14 +122,14 @@ final class TrackerStore: NSObject {
     }
     
     func addNewTracker(_ tracker: Tracker, to categoryID: NSManagedObjectID) throws {
-        let categoryInContext = try context.existingObject(with: categoryID) as! TrackerCategoryCoreData
+        // Безопасное приведение типа
+        guard let categoryInContext = try context.existingObject(with: categoryID) as? TrackerCategoryCoreData else { return }
         
-        // ПРОВЕРКА НА ДУБЛИКАТ:
         let fetchRequest: NSFetchRequest<TrackerCoreData> = TrackerCoreData.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "id == %@", tracker.id as CVarArg)
-        let count = try context.count(for: fetchRequest)
         
-        if count > 0 { return } // Если такой ID уже есть, не создаем новый
+        let count = try context.count(for: fetchRequest)
+        if count > 0 { return }
         
         context.performAndWait {
             let trackerCoreData = TrackerCoreData(context: context)
@@ -138,7 +143,6 @@ final class TrackerStore: NSObject {
         }
         
         try context.save()
-        // Делегат вызовется автоматически через controllerDidChangeContent
     }
     
     // MARK: - Data Accessors
@@ -147,15 +151,22 @@ final class TrackerStore: NSObject {
     }
     
     func numberOfItemsInSection(_ section: Int) -> Int {
-        fetchedResultsController.sections?[section].numberOfObjects ?? 0
+        guard section < (fetchedResultsController.sections?.count ?? 0) else { return 0 }
+        return fetchedResultsController.sections?[section].numberOfObjects ?? 0
     }
     
     func headerLabelFor(section: Int) -> String? {
-        fetchedResultsController.sections?[section].name
+        guard section < (fetchedResultsController.sections?.count ?? 0) else { return nil }
+        return fetchedResultsController.sections?[section].name
     }
     
-    func trackerCoreData(at indexPath: IndexPath) -> TrackerCoreData {
-        fetchedResultsController.object(at: indexPath)
+    // Метод теперь возвращает опционал TrackerCoreData?
+    func trackerCoreData(at indexPath: IndexPath) -> TrackerCoreData? {
+        guard indexPath.section < (fetchedResultsController.sections?.count ?? 0),
+              indexPath.row < (fetchedResultsController.sections?[indexPath.section].numberOfObjects ?? 0) else {
+            return nil
+        }
+        return try? fetchedResultsController.object(at: indexPath)
     }
 }
 

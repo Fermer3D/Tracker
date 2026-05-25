@@ -20,6 +20,8 @@ final class FiltersViewController: UIViewController {
         let table = UITableView()
         table.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         table.separatorInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
+        table.layer.cornerRadius = 16 // Добавил скругление, чтобы выглядело аккуратнее
+        table.layer.masksToBounds = true
         table.translatesAutoresizingMaskIntoConstraints = false
         return table
     }()
@@ -63,11 +65,18 @@ extension FiltersViewController: UITableViewDataSource, UITableViewDelegate {
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+        let cell = UITableViewCell(style: .default, reuseIdentifier: "cell")
         let filter = filters[indexPath.row]
         cell.textLabel?.text = filter.title
         cell.backgroundColor = .systemGray6
-        cell.accessoryType = (filter == selectedFilter) ? .checkmark : .none
+        
+        // ПРАВКА ПО РЕВЬЮ: Галочка не ставится для "Все" и "Сегодня"
+        if filter == .all || filter == .today {
+            cell.accessoryType = .none
+        } else {
+            cell.accessoryType = (filter == selectedFilter) ? .checkmark : .none
+        }
+        
         return cell
     }
     

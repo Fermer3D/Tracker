@@ -18,3 +18,6 @@
 "pinned_section" = "Закрепленные";
 "other_category" = "Другое";
 "unpin_action" = "Открепить";
+"delete_alert_title" = "Уверены, что хотите удалить трекер?";
+"delete_button" = "Удалить";
+"cancel_button" = "Отменить";

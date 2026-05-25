@@ -28,7 +28,7 @@ final class ScheduleViewController: UIViewController {
     private let doneButton: UIButton = {
         let button = UIButton(type: .system)
         button.setTitle("Готово", for: .normal)
-        button.backgroundColor = .ypBlack // Используем адаптивный цвет
+        button.backgroundColor = .appButtonText // Используем адаптивный цвет
         button.setTitleColor(.ypWhite, for: .normal)
         button.layer.cornerRadius = 16
         button.translatesAutoresizingMaskIntoConstraints = false

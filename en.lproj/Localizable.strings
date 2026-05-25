@@ -11,8 +11,11 @@
 "search_placeholder" = "Search";
 "nothing_found" = "Nothing found";
 "what_to_track" = "What will we track?";
-"days_count" = "%d day";
+"days_count" = "%d day;%d days;%d days";
 "pin_action" = "Pin";
 "edit_action" = "Edit";
 "delete_action" = "Delete";
 "unpin_action" = "Unpin";
+"delete_alert_title" = "Are you sure you want to delete the tracker?";
+"delete_button" = "Delete";
+"cancel_button" = "Cancel";

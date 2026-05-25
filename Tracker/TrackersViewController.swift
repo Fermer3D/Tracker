@@ -48,7 +48,6 @@ final class TrackersViewController: UIViewController {
         return button
     }()
     
-    // Плейсхолдер для пустого списка
     private let placeholderImage: UIImageView = {
         let image = UIImageView(image: UIImage(named: "EmptyState"))
         image.contentMode = .scaleAspectFit
@@ -65,7 +64,6 @@ final class TrackersViewController: UIViewController {
         return label
     }()
     
-    // Плейсхолдер для поиска ("Ничего не найдено")
     private let notFoundPlaceholderView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
@@ -74,7 +72,7 @@ final class TrackersViewController: UIViewController {
     }()
     
     private let notFoundImageView: UIImageView = {
-        let iv = UIImageView(image: UIImage(named: "NotFoundPlaceholder")) // Убедитесь, что смайлик добавлен в Assets
+        let iv = UIImageView(image: UIImage(named: "NotFoundPlaceholder"))
         iv.contentMode = .scaleAspectFit
         iv.translatesAutoresizingMaskIntoConstraints = false
         return iv
@@ -105,14 +103,7 @@ final class TrackersViewController: UIViewController {
         let weekday = Calendar.current.component(.weekday, from: currentDate)
         let searchText = navigationItem.searchController?.searchBar.text ?? ""
         trackerStore.updateFilters(filter: currentFilter, date: currentDate, weekday: weekday, searchText: searchText)
-        
-        updateFilterButtonColor()
         reloadPlaceholders(searchText: searchText)
-    }
-    
-    private func updateFilterButtonColor() {
-        let isDefault = (currentFilter == .all || currentFilter == .today)
-        filterButton.backgroundColor = isDefault ? .systemBlue : .red
     }
     
     private func setupNavigationBar() {
@@ -120,7 +111,7 @@ final class TrackersViewController: UIViewController {
         navigationItem.title = NSLocalizedString("trackers_title", comment: "")
         
         let addButton = UIBarButtonItem(image: UIImage(systemName: "plus"), style: .plain, target: self, action: #selector(didTapAddButton))
-        addButton.tintColor = .label
+        addButton.tintColor = .appButtonBg
         navigationItem.leftBarButtonItem = addButton
         
         let datePicker = UIDatePicker()
@@ -141,7 +132,6 @@ final class TrackersViewController: UIViewController {
         view.addSubview(placeholderImage)
         view.addSubview(placeholderLabel)
         view.addSubview(filterButton)
-        
         view.addSubview(notFoundPlaceholderView)
         notFoundPlaceholderView.addSubview(notFoundImageView)
         notFoundPlaceholderView.addSubview(notFoundLabel)
@@ -171,6 +161,7 @@ final class TrackersViewController: UIViewController {
             notFoundImageView.heightAnchor.constraint(equalToConstant: 80),
             notFoundLabel.topAnchor.constraint(equalTo: notFoundImageView.bottomAnchor, constant: 8),
             notFoundLabel.centerXAnchor.constraint(equalTo: notFoundPlaceholderView.centerXAnchor),
+            notFoundLabel.bottomAnchor.constraint(equalTo: notFoundPlaceholderView.bottomAnchor),
             
             filterButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             filterButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
@@ -180,23 +171,27 @@ final class TrackersViewController: UIViewController {
     }
     
     private func reloadPlaceholders(searchText: String) {
-        let isDataEmpty = trackerStore.numberOfSections == 0
-        let isSearchActive = !searchText.isEmpty
+        var totalVisibleTrackers = 0
+        for section in 0..<trackerStore.numberOfSections {
+            totalVisibleTrackers += trackerStore.numberOfItemsInSection(section)
+        }
         
-        if isDataEmpty && !isSearchActive {
-            // Базовый пустой экран
-            collectionView.isHidden = true
-            placeholderImage.isHidden = false
-            placeholderLabel.isHidden = false
-            notFoundPlaceholderView.isHidden = true
-        } else if isDataEmpty && isSearchActive {
-            // Состояние "Ничего не найдено"
-            collectionView.isHidden = true
-            placeholderImage.isHidden = true
-            placeholderLabel.isHidden = true
-            notFoundPlaceholderView.isHidden = false
+        let isSearchActive = !searchText.isEmpty
+        let isFilterActive = currentFilter != .all
+        
+        if totalVisibleTrackers == 0 {
+            if isSearchActive || isFilterActive {
+                collectionView.isHidden = true
+                placeholderImage.isHidden = true
+                placeholderLabel.isHidden = true
+                notFoundPlaceholderView.isHidden = false
+            } else {
+                collectionView.isHidden = true
+                placeholderImage.isHidden = false
+                placeholderLabel.isHidden = false
+                notFoundPlaceholderView.isHidden = true
+            }
         } else {
-            // Есть данные
             collectionView.isHidden = false
             placeholderImage.isHidden = true
             placeholderLabel.isHidden = true
@@ -210,12 +205,14 @@ final class TrackersViewController: UIViewController {
     }
     
     @objc private func didTapFilterButton() {
+        AnalyticsService.shared.report(event: .click, screen: .main, item: .filter)
         let filterVC = FiltersViewController(selectedFilter: currentFilter)
         filterVC.delegate = self
         present(UINavigationController(rootViewController: filterVC), animated: true)
     }
     
     @objc private func didTapAddButton() {
+        AnalyticsService.shared.report(event: .click, screen: .main, item: .addTrack)
         let choiceVC = ChoiceViewController()
         choiceVC.delegate = self
         present(UINavigationController(rootViewController: choiceVC), animated: true)
@@ -234,11 +231,10 @@ extension TrackersViewController: UICollectionViewDataSource, UICollectionViewDe
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: TrackerCollectionViewCell.identifier, for: indexPath) as? TrackerCollectionViewCell else { return UICollectionViewCell() }
+        guard let trackerCD = trackerStore.trackerCoreData(at: indexPath) else { return cell }
         
-        let trackerCD = trackerStore.trackerCoreData(at: indexPath)
         let id = trackerCD.id ?? UUID()
         let color = UIColorMarshalling.color(from: trackerCD.colorHex ?? "#3772E7")
-        
         let tracker = Tracker(id: id, name: trackerCD.name ?? "", color: color, emoji: trackerCD.emoji ?? "", schedule: nil, isPinned: trackerCD.isPinned)
         
         let records = (try? trackerRecordStore.fetchRecords()) ?? []
@@ -273,24 +269,28 @@ extension TrackersViewController: UICollectionViewDataSource, UICollectionViewDe
 }
 
 extension TrackersViewController: TrackerCellDelegate, TrackerStoreDelegate, FiltersViewControllerDelegate, NewHabitViewControllerDelegate, ChoiceViewControllerDelegate, UISearchResultsUpdating {
-    
     func completeTracker(id: UUID, at indexPath: IndexPath) {
+        AnalyticsService.shared.report(event: .click, screen: .main, item: .track)
         try? trackerRecordStore.add(TrackerRecord(trackerId: id, date: Calendar.current.startOfDay(for: currentDate)))
+        collectionView.reloadItems(at: [indexPath])
     }
     
     func uncompleteTracker(id: UUID, at indexPath: IndexPath) {
         try? trackerRecordStore.remove(TrackerRecord(trackerId: id, date: Calendar.current.startOfDay(for: currentDate)))
+        collectionView.reloadItems(at: [indexPath])
     }
     
     func pinTracker(at indexPath: IndexPath) {
-        let tracker = trackerStore.trackerCoreData(at: indexPath)
-        try? trackerStore.togglePin(tracker: tracker)
+        if let tracker = trackerStore.trackerCoreData(at: indexPath) {
+            try? trackerStore.togglePin(tracker: tracker)
+        }
     }
     
     func deleteTracker(at indexPath: IndexPath) {
-        let tracker = trackerStore.trackerCoreData(at: indexPath)
+        guard let tracker = trackerStore.trackerCoreData(at: indexPath) else { return }
         let alert = UIAlertController(title: NSLocalizedString("delete_alert_title", comment: ""), message: nil, preferredStyle: .actionSheet)
         alert.addAction(UIAlertAction(title: NSLocalizedString("delete_button", comment: ""), style: .destructive) { [weak self] _ in
+            AnalyticsService.shared.report(event: .click, screen: .main, item: .delete)
             try? self?.trackerStore.deleteTracker(tracker)
         })
         alert.addAction(UIAlertAction(title: NSLocalizedString("cancel_button", comment: ""), style: .cancel))
@@ -298,7 +298,8 @@ extension TrackersViewController: TrackerCellDelegate, TrackerStoreDelegate, Fil
     }
     
     func editTracker(at indexPath: IndexPath) {
-        let trackerCD = trackerStore.trackerCoreData(at: indexPath)
+        AnalyticsService.shared.report(event: .click, screen: .main, item: .edit)
+        guard let trackerCD = trackerStore.trackerCoreData(at: indexPath) else { return }
         let creationVC = NewHabitViewController()
         creationVC.delegate = self
         creationVC.trackerToEdit = trackerCD
@@ -317,7 +318,6 @@ extension TrackersViewController: TrackerCellDelegate, TrackerStoreDelegate, Fil
     
     func updateSearchResults(for searchController: UISearchController) { updateFilters() }
     func didSelectFilter(_ filter: FilterOption) { self.currentFilter = filter; updateFilters() }
-    
     func didCreateTracker(_ tracker: Tracker) {}
     
     func didSelectTrackerType(isHabit: Bool) {
