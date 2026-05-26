@@ -98,6 +98,16 @@ final class TrackersViewController: UIViewController {
         updateFilters()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        AnalyticsService.shared.report(event: .open, screen: .main)
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        AnalyticsService.shared.report(event: .close, screen: .main)
+    }
+    
     // MARK: - Private Methods
     private func updateFilters() {
         let weekday = Calendar.current.component(.weekday, from: currentDate)

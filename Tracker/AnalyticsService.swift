@@ -26,7 +26,9 @@ final class AnalyticsService {
     }
     
     func report(event: Event, screen: Screen, item: Item? = nil) {
+        // Создаем параметры согласно ТЗ
         var params: [String: Any] = [
+            "event": event.rawValue, // Добавлено для соответствия требованиям ТЗ
             "screen": screen.rawValue
         ]
         
@@ -34,7 +36,10 @@ final class AnalyticsService {
             params["item"] = item.rawValue
         }
         
-        // Используем обновленный синтаксис: name: вместо позиционного аргумента
+        // Дублирование в логи для отладки
+        print("Analytics event: \(event.rawValue), params: \(params)")
+        
+        // Отправка в AppMetrica
         AppMetrica.reportEvent(name: event.rawValue, parameters: params) { error in
             print("❌ REPORT ERROR: \(error.localizedDescription)")
         }
