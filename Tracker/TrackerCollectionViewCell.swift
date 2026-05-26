@@ -3,6 +3,9 @@ import UIKit
 protocol TrackerCellDelegate: AnyObject {
     func completeTracker(id: UUID, at indexPath: IndexPath)
     func uncompleteTracker(id: UUID, at indexPath: IndexPath)
+    func pinTracker(at indexPath: IndexPath)
+    func editTracker(at indexPath: IndexPath)
+    func deleteTracker(at indexPath: IndexPath)
 }
 
 final class TrackerCollectionViewCell: UICollectionViewCell {
@@ -13,6 +16,7 @@ final class TrackerCollectionViewCell: UICollectionViewCell {
     private var trackerId: UUID?
     private var indexPath: IndexPath?
     private var isCompleted: Bool = false
+    private var isPinned: Bool = false
     
     // MARK: - UI Elements
     private let cardView: UIView = {
@@ -20,12 +24,13 @@ final class TrackerCollectionViewCell: UICollectionViewCell {
         view.layer.cornerRadius = 16
         view.layer.masksToBounds = true
         view.translatesAutoresizingMaskIntoConstraints = false
+        view.isUserInteractionEnabled = true
         return view
     }()
     
     private let emojiContainerView: UIView = {
         let view = UIView()
-        view.backgroundColor = .white.withAlphaComponent(0.3)
+        view.backgroundColor = .ypWhite.withAlphaComponent(0.3)
         view.layer.cornerRadius = 12
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
@@ -39,6 +44,14 @@ final class TrackerCollectionViewCell: UICollectionViewCell {
         return label
     }()
     
+    private let pinImageView: UIImageView = {
+        let imageView = UIImageView(image: UIImage(systemName: "pin.fill"))
+        imageView.tintColor = .white
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.isHidden = true
+        return imageView
+    }()
+    
     private let trackerNameLabel: UILabel = {
         let label = UILabel()
         label.textColor = .white
@@ -50,7 +63,8 @@ final class TrackerCollectionViewCell: UICollectionViewCell {
     
     private let daysLabel: UILabel = {
         let label = UILabel()
-        label.textColor = .black
+        // ИСПРАВЛЕНИЕ: Используем .label для автоматического переключения черный/белый
+        label.textColor = .label
         label.font = .systemFont(ofSize: 12, weight: .medium)
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -70,22 +84,24 @@ final class TrackerCollectionViewCell: UICollectionViewCell {
         setupUI()
         setupConstraints()
         completeButton.addTarget(self, action: #selector(didTapCompleteButton), for: .touchUpInside)
+        
+        let interaction = UIContextMenuInteraction(delegate: self)
+        cardView.addInteraction(interaction)
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
-    // Важно: сброс состояния перед переиспользованием
     override func prepareForReuse() {
         super.prepareForReuse()
         trackerId = nil
         indexPath = nil
         isCompleted = false
+        isPinned = false
+        pinImageView.isHidden = true
         daysLabel.text = nil
         completeButton.setImage(nil, for: .normal)
-        completeButton.backgroundColor = nil
-        completeButton.alpha = 1.0
     }
     
     // MARK: - Actions
@@ -102,12 +118,15 @@ final class TrackerCollectionViewCell: UICollectionViewCell {
     func configure(with tracker: Tracker, isCompleted: Bool, completedDaysString: String, indexPath: IndexPath) {
         self.trackerId = tracker.id
         self.isCompleted = isCompleted
+        self.isPinned = tracker.isPinned
         self.indexPath = indexPath
         
         cardView.backgroundColor = tracker.color
         emojiLabel.text = tracker.emoji
         trackerNameLabel.text = tracker.name
-        daysLabel.text = completedDaysString
+        daysLabel.text = completedDaysString.contains("(null)") ? "0 дней" : completedDaysString
+        
+        pinImageView.isHidden = !tracker.isPinned
         
         updateButtonState()
     }
@@ -118,20 +137,15 @@ final class TrackerCollectionViewCell: UICollectionViewCell {
         let image = UIImage(systemName: imageName, withConfiguration: config)
         completeButton.setImage(image, for: .normal)
         
-        if isCompleted {
-            completeButton.backgroundColor = cardView.backgroundColor?.withAlphaComponent(0.3)
-            completeButton.alpha = 0.5
-        } else {
-            completeButton.backgroundColor = cardView.backgroundColor
-            completeButton.alpha = 1.0
-        }
+        completeButton.backgroundColor = isCompleted ? cardView.backgroundColor?.withAlphaComponent(0.3) : cardView.backgroundColor
+        completeButton.alpha = isCompleted ? 0.5 : 1.0
     }
     
-    // MARK: - Layout
     private func setupUI() {
         contentView.addSubview(cardView)
         cardView.addSubview(emojiContainerView)
         emojiContainerView.addSubview(emojiLabel)
+        cardView.addSubview(pinImageView)
         cardView.addSubview(trackerNameLabel)
         contentView.addSubview(daysLabel)
         contentView.addSubview(completeButton)
@@ -152,6 +166,11 @@ final class TrackerCollectionViewCell: UICollectionViewCell {
             emojiLabel.centerXAnchor.constraint(equalTo: emojiContainerView.centerXAnchor),
             emojiLabel.centerYAnchor.constraint(equalTo: emojiContainerView.centerYAnchor),
             
+            pinImageView.centerYAnchor.constraint(equalTo: emojiContainerView.centerYAnchor),
+            pinImageView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
+            pinImageView.widthAnchor.constraint(equalToConstant: 24),
+            pinImageView.heightAnchor.constraint(equalToConstant: 24),
+            
             trackerNameLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
             trackerNameLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
             trackerNameLabel.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -12),
@@ -164,5 +183,30 @@ final class TrackerCollectionViewCell: UICollectionViewCell {
             daysLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 12),
             daysLabel.centerYAnchor.constraint(equalTo: completeButton.centerYAnchor)
         ])
+    }
+}
+
+// MARK: - UIContextMenuInteractionDelegate
+extension TrackerCollectionViewCell: UIContextMenuInteractionDelegate {
+    func contextMenuInteraction(_ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {
+        guard let indexPath = indexPath else { return nil }
+        
+        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
+            guard let self = self else { return nil }
+            
+            let pinTitle = self.isPinned ? NSLocalizedString("unpin_action", comment: "") : NSLocalizedString("pin_action", comment: "")
+            
+            let pinAction = UIAction(title: pinTitle) { _ in
+                self.delegate?.pinTracker(at: indexPath)
+            }
+            let editAction = UIAction(title: NSLocalizedString("edit_action", comment: "")) { _ in
+                self.delegate?.editTracker(at: indexPath)
+            }
+            let deleteAction = UIAction(title: NSLocalizedString("delete_action", comment: ""), attributes: .destructive) { _ in
+                self.delegate?.deleteTracker(at: indexPath)
+            }
+            
+            return UIMenu(title: "", children: [pinAction, editAction, deleteAction])
+        }
     }
 }

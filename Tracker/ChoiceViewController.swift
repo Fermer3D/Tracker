@@ -9,26 +9,33 @@ final class ChoiceViewController: UIViewController {
     weak var delegate: ChoiceViewControllerDelegate?
     
     // MARK: - UI Elements
-    // Лишний titleLabel убран, чтобы заголовок не двоился
     
     private let habitButton: UIButton = {
-        let button = UIButton(type: .system)
+        let button = UIButton(type: .custom) // Используем .custom вместо .system
         button.setTitle("Привычка", for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.backgroundColor = .black
-        button.setTitleColor(.white, for: .normal)
+        
+        // Используем цвета из Assets
+        button.backgroundColor = UIColor(named: "YP Reverse")
+        button.setTitleColor(UIColor(named: "YP Background"), for: .normal)
+        
         button.layer.cornerRadius = 16
+        button.layer.masksToBounds = true // Обязательно для скругления
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }()
     
     private let irregularEventButton: UIButton = {
-        let button = UIButton(type: .system)
+        let button = UIButton(type: .custom) // Используем .custom вместо .system
         button.setTitle("Нерегулярное событие", for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        button.backgroundColor = .black
-        button.setTitleColor(.white, for: .normal)
+        
+        // Используем цвета из Assets
+        button.backgroundColor = UIColor(named: "YP Reverse")
+        button.setTitleColor(UIColor(named: "YP Background"), for: .normal)
+        
         button.layer.cornerRadius = 16
+        button.layer.masksToBounds = true // Обязательно для скругления
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }()
@@ -45,14 +52,14 @@ final class ChoiceViewController: UIViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        view.backgroundColor = .ypBg
         setupViews()
         setupConstraints()
     }
     
     // MARK: - Setup
     private func setupViews() {
-        view.backgroundColor = .white
-        title = "Создание трекера" // Оставляем только системный заголовок в UINavigationBar
+        title = "Создание трекера"
         
         view.addSubview(stackView)
         stackView.addArrangedSubview(habitButton)
@@ -75,14 +82,12 @@ final class ChoiceViewController: UIViewController {
     
     // MARK: - Actions
     @objc private func didTapHabit() {
-        print("ℹ️ [ChoiceVC]: Нажата кнопка 'Привычка'. Закрываем экран выбора...")
         dismiss(animated: true) { [weak self] in
             self?.delegate?.didSelectTrackerType(isHabit: true)
         }
     }
     
     @objc private func didTapIrregularEvent() {
-        print("ℹ️ [ChoiceVC]: Нажата кнопка 'Нерегулярное событие'. Закрываем экран выбора...")
         dismiss(animated: true) { [weak self] in
             self?.delegate?.didSelectTrackerType(isHabit: false)
         }

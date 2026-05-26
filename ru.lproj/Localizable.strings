@@ -1,0 +1,23 @@
+/* 
+  Localizable.strings
+  Tracker
+
+  Created by Данил Третьяченко on 24.05.2026.
+  
+*/
+"trackers_title" = "Трекеры";
+"statistics_title" = "Статистика";
+"filters_title" = "Фильтры";
+"search_placeholder" = "Поиск";
+"nothing_found" = "Ничего не найдено";
+"what_to_track" = "Что будем отслеживать?";
+"days_count" = "%d день";
+"pin_action" = "Закрепить";
+"edit_action" = "Редактировать";
+"delete_action" = "Удалить";
+"pinned_section" = "Закрепленные";
+"other_category" = "Другое";
+"unpin_action" = "Открепить";
+"delete_alert_title" = "Уверены, что хотите удалить трекер?";
+"delete_button" = "Удалить";
+"cancel_button" = "Отменить";

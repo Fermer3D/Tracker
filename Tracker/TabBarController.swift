@@ -1,10 +1,3 @@
-//
-//  TabBarController.swift
-//  Tracker
-//
-//  Created by Данил Третьяченко on 12.05.2026.
-//
-
 import UIKit
 
 final class TabBarController: UITabBarController {
@@ -12,27 +5,36 @@ final class TabBarController: UITabBarController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // Настраиваем внешний вид таб-бара
-        tabBar.backgroundColor = .white
-        tabBar.tintColor = .systemBlue // Цвет активной иконки
+        // 1. Настройка внешнего вида (Appearance)
+        let appearance = UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
         
-        // Создаем первый экран (Трекеры) в обертке NavigationController
+        // Используем цвет фона из ваших Assets (тот же, что и у контроллеров)
+        appearance.backgroundColor = UIColor(named: "YP Background") ?? .systemBackground
+        
+        tabBar.standardAppearance = appearance
+        tabBar.scrollEdgeAppearance = appearance
+        
+        // 2. Настройка цветов иконок
+        // Используем YP цвета, чтобы не было конфликтов с системным синим
+        tabBar.tintColor = UIColor(named: "YP Blue") ?? .systemBlue
+        tabBar.unselectedItemTintColor = .gray // Цвет неактивных иконок
+        
+        // 3. Инициализация контроллеров
         let trackersVC = UINavigationController(rootViewController: TrackersViewController())
         trackersVC.tabBarItem = UITabBarItem(
-            title: "Трекеры",
+            title: NSLocalizedString("trackers_title", comment: ""),
             image: UIImage(systemName: "record.circle.fill"),
             tag: 0
         )
         
-        // Создаем второй экран (Статистика)
         let statsVC = UINavigationController(rootViewController: StatisticsViewController())
         statsVC.tabBarItem = UITabBarItem(
-            title: "Статистика",
+            title: NSLocalizedString("statistics_title", comment: ""),
             image: UIImage(systemName: "hare.fill"),
             tag: 1
         )
         
-        // Добавляем их в массив контроллеров таб-бара
         viewControllers = [trackersVC, statsVC]
     }
 }

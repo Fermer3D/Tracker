@@ -2,120 +2,171 @@ import Foundation
 import CoreData
 import UIKit
 
-// Протокол для уведомления контроллера об изменениях в базе
 protocol TrackerStoreDelegate: AnyObject {
     func storeDidChangeContent()
 }
 
 final class TrackerStore: NSObject {
-    
-    // MARK: - Properties
-    private let context: NSManagedObjectContext
     weak var delegate: TrackerStoreDelegate?
+    static let shared = TrackerStore()
     
-    // NSFetchedResultsController инкапсулирует логику работы с данными
-    private lazy var fetchedResultsController: NSFetchedResultsController<TrackerCoreData> = {
-        let fetchRequest = TrackerCoreData.fetchRequest()
-        
-        // ВАЖНО: Сортировка по дескриптору секции (category.title) ОБЯЗАТЕЛЬНО должна быть первой!
-        fetchRequest.sortDescriptors = [
-            NSSortDescriptor(keyPath: \TrackerCoreData.category?.title, ascending: true),
-            NSSortDescriptor(keyPath: \TrackerCoreData.name, ascending: true)
-        ]
-        
-        print("ℹ️ [TrackerStore]: Инициализация FRC. Контекст: \(self.context)")
-        
-        let controller = NSFetchedResultsController(
-            fetchRequest: fetchRequest,
-            managedObjectContext: self.context,
-            sectionNameKeyPath: "category.title", // Группируем секции по названию категории автоматически
-            cacheName: nil
-        )
-        controller.delegate = self
-        
-        do {
-            try controller.performFetch()
-            print("✅ [TrackerStore]: Первичный performFetch успешно выполнен!")
-        } catch {
-            print("❌ [TrackerStore]: Ошибка performFetch в lazy инициализаторе: \(error)")
+    private let context: NSManagedObjectContext
+
+    private override init() {
+        guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
+            // В случае ошибки приводим к некритичному состоянию или используем пустой контекст
+            self.context = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
+            super.init()
+            return
         }
-        
-        return controller
-    }()
-    
-    // MARK: - Init
+        self.context = appDelegate.persistentContainer.viewContext
+        super.init()
+    }
+
     init(context: NSManagedObjectContext) {
         self.context = context
         super.init()
     }
+
+    private var _fetchedResultsController: NSFetchedResultsController<TrackerCoreData>?
     
-    // MARK: - Public Methods (Абстракция для контроллера)
-    
-    var numberOfSections: Int {
-        return fetchedResultsController.sections?.count ?? 0
-    }
-    
-    func numberOfItemsInSection(_ section: Int) -> Int {
-        guard let sections = fetchedResultsController.sections, sections.count > section else {
-            return 0
+    private var fetchedResultsController: NSFetchedResultsController<TrackerCoreData> {
+        if let frc = _fetchedResultsController {
+            return frc
         }
-        return sections[section].numberOfObjects
+        
+        let fetchRequest = TrackerCoreData.fetchRequest()
+        fetchRequest.sortDescriptors = [
+            NSSortDescriptor(key: "isPinned", ascending: false),
+            NSSortDescriptor(key: "category.title", ascending: true),
+            NSSortDescriptor(key: "name", ascending: true)
+        ]
+        
+        let frc = NSFetchedResultsController(
+            fetchRequest: fetchRequest,
+            managedObjectContext: context,
+            sectionNameKeyPath: "category.title",
+            cacheName: nil
+        )
+        
+        frc.delegate = self
+        _fetchedResultsController = frc
+        
+        try? frc.performFetch()
+        
+        return frc
     }
     
-    func headerLabelFor(section: Int) -> String? {
-        guard let sections = fetchedResultsController.sections, sections.count > section else {
-            return nil
+    // MARK: - Public Methods (CRUD)
+    
+    func fetchAllTrackers() throws -> [Tracker] {
+        let fetchRequest = TrackerCoreData.fetchRequest()
+        let trackerCDs = try context.fetch(fetchRequest)
+        
+        return trackerCDs.compactMap { cd in
+            guard let id = cd.id,
+                  let name = cd.name,
+                  let colorHex = cd.colorHex,
+                  let emoji = cd.emoji else { return nil }
+                  
+            return Tracker(
+                id: id,
+                name: name,
+                color: UIColorMarshalling.color(from: colorHex),
+                emoji: emoji,
+                schedule: cd.schedule?.components(separatedBy: ",").compactMap { WeekDay(rawValue: Int($0) ?? 0) },
+                isPinned: cd.isPinned
+            )
         }
-        return sections[section].name
     }
     
-    /// Безопасное получение объекта Core Data по индексу
-    func trackerCoreData(at indexPath: IndexPath) -> TrackerCoreData {
-        if let sections = fetchedResultsController.sections,
-           sections.count > indexPath.section,
-           sections[indexPath.section].numberOfObjects > indexPath.item {
-            return fetchedResultsController.object(at: indexPath)
+    func togglePin(tracker: TrackerCoreData) throws {
+        context.performAndWait {
+            tracker.isPinned.toggle()
         }
-        return TrackerCoreData(context: context)
+        try context.save()
+    }
+
+    func deleteTracker(_ tracker: TrackerCoreData) throws {
+        context.performAndWait {
+            context.delete(tracker)
+        }
+        try context.save()
     }
     
-    /// Метод для обновления фильтров (день недели и поиск)
-    func updateFilters(weekday: Int, searchText: String) {
+    func updateFilters(filter: FilterOption, date: Date, weekday: Int, searchText: String) {
         var predicates: [NSPredicate] = []
         
-        if searchText.isEmpty {
-            predicates.append(NSPredicate(format: "schedule CONTAINS[c] %@", String(weekday)))
-        } else {
+        predicates.append(NSPredicate(format: "schedule CONTAINS[c] %@ OR schedule == nil OR schedule == ''", String(weekday)))
+        
+        if !searchText.isEmpty {
             predicates.append(NSPredicate(format: "name CONTAINS[c] %@", searchText))
+        }
+        
+        if filter == .completed {
+            let completedIds = TrackerRecordStore.shared.fetchCompletedTrackerIds(for: date)
+            predicates.append(NSPredicate(format: "id IN %@", completedIds))
+        } else if filter == .notCompleted {
+            let completedIds = TrackerRecordStore.shared.fetchCompletedTrackerIds(for: date)
+            predicates.append(NSPredicate(format: "NOT (id IN %@)", completedIds))
         }
         
         fetchedResultsController.fetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
         
         do {
             try fetchedResultsController.performFetch()
+            delegate?.storeDidChangeContent()
         } catch {
-            print("Fetch error: \(error)")
+            print("❌ Ошибка при обновлении фильтров: \(error)")
         }
     }
     
-    /// Сохранение нового трекера
-    func addNewTracker(_ tracker: Tracker, to category: TrackerCategoryCoreData) throws {
-        let trackerCoreData = TrackerCoreData(context: context)
+    func addNewTracker(_ tracker: Tracker, to categoryID: NSManagedObjectID) throws {
+        // Безопасное приведение типа
+        guard let categoryInContext = try context.existingObject(with: categoryID) as? TrackerCategoryCoreData else { return }
         
-        trackerCoreData.id = tracker.id
-        trackerCoreData.name = tracker.name
-        trackerCoreData.emoji = tracker.emoji
-        trackerCoreData.colorHex = UIColorMarshalling.hexString(from: tracker.color)
+        let fetchRequest: NSFetchRequest<TrackerCoreData> = TrackerCoreData.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "id == %@", tracker.id as CVarArg)
         
-        let scheduleString = tracker.schedule?.map { String($0.rawValue) }.joined(separator: ",") ?? ""
-        trackerCoreData.setValue(scheduleString, forKey: "schedule")
+        let count = try context.count(for: fetchRequest)
+        if count > 0 { return }
         
-        trackerCoreData.category = category
-        
-        if context.hasChanges {
-            try context.save()
-            print("✅ [TrackerStore]: Новый трекер '\(tracker.name)' успешно сохранен.")
+        context.performAndWait {
+            let trackerCoreData = TrackerCoreData(context: context)
+            trackerCoreData.id = tracker.id
+            trackerCoreData.name = tracker.name
+            trackerCoreData.emoji = tracker.emoji
+            trackerCoreData.colorHex = UIColorMarshalling.hexString(from: tracker.color)
+            trackerCoreData.isPinned = tracker.isPinned
+            trackerCoreData.schedule = tracker.schedule?.map { String($0.rawValue) }.joined(separator: ",")
+            trackerCoreData.category = categoryInContext
         }
+        
+        try context.save()
+    }
+    
+    // MARK: - Data Accessors
+    var numberOfSections: Int {
+        fetchedResultsController.sections?.count ?? 0
+    }
+    
+    func numberOfItemsInSection(_ section: Int) -> Int {
+        guard section < (fetchedResultsController.sections?.count ?? 0) else { return 0 }
+        return fetchedResultsController.sections?[section].numberOfObjects ?? 0
+    }
+    
+    func headerLabelFor(section: Int) -> String? {
+        guard section < (fetchedResultsController.sections?.count ?? 0) else { return nil }
+        return fetchedResultsController.sections?[section].name
+    }
+    
+    // Метод теперь возвращает опционал TrackerCoreData?
+    func trackerCoreData(at indexPath: IndexPath) -> TrackerCoreData? {
+        guard indexPath.section < (fetchedResultsController.sections?.count ?? 0),
+              indexPath.row < (fetchedResultsController.sections?[indexPath.section].numberOfObjects ?? 0) else {
+            return nil
+        }
+        return try? fetchedResultsController.object(at: indexPath)
     }
 }
 
