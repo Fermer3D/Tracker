@@ -152,9 +152,6 @@
 			name = Tracker;
 			packageProductDependencies = (
 				9F99748A2FC132D000533516 /* AppMetricaCore */,
-				9F0A546C2FC3564900539CC8 /* InlineSnapshotTesting */,
-				9F0A546E2FC3564900539CC8 /* SnapshotTesting */,
-				9F0A54702FC3564900539CC8 /* SnapshotTestingCustomDump */,
 			);
 			productName = Tracker;
 			productReference = 9F9897782FB2821E0036284F /* Tracker.app */;
@@ -658,21 +655,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		9F0A546C2FC3564900539CC8 /* InlineSnapshotTesting */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 9F0A546B2FC3553B00539CC8 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */;
-			productName = InlineSnapshotTesting;
-		};
-		9F0A546E2FC3564900539CC8 /* SnapshotTesting */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 9F0A546B2FC3553B00539CC8 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */;
-			productName = SnapshotTesting;
-		};
-		9F0A54702FC3564900539CC8 /* SnapshotTestingCustomDump */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 9F0A546B2FC3553B00539CC8 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */;
-			productName = SnapshotTestingCustomDump;
-		};
 		9F123DC92FC35734009370DC /* InlineSnapshotTesting */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 9F0A546B2FC3553B00539CC8 /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */;

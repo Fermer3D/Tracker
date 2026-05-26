@@ -11,6 +11,3 @@ protocol NewHabitViewControllerDelegate: AnyObject {
     func didCreateTracker(_ tracker: Tracker)
 }
 
-//protocol ScheduleViewControllerDelegate: AnyObject {
-//    func didUpdateSchedule(_ selectedDays: [WeekDay])
-//}
